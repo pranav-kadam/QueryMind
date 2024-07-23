@@ -29,10 +29,8 @@ def query_gemini(prompt):
         raise Exception(f"Gemini API request failed: {str(e)}")
 
 def clean_sql_query(sql_query):
-    # Remove leading non-alphabetic characters
     sql_query = re.sub(r'^[^a-zA-Z]*(select|insert|update|delete)', r'\1', sql_query, flags=re.IGNORECASE)
     
-    # Clean up the response
     sql_query_lines = sql_query.split('\n')
     sql_query_lines = [line.strip() for line in sql_query_lines if line.strip()]
     cleaned_sql_query = ' '.join(sql_query_lines)
@@ -69,14 +67,11 @@ def execute_query():
         app.logger.info(f"Generated SQL query: {sql_query}")
 
      
-
-        # Log and execute the SQL query
         app.logger.debug(f"Executing SQL query: {sql_query}")
         result = db.session.execute(text(sql_query))
         columns = result.keys()
         rows = [dict(zip(columns, row)) for row in result.fetchall()]
 
-        # Generate insights based on the query result
         insights_prompt = f"Given the following SQL query: '{sql_query}' and its result: {rows}, provide insights and analysis about the data. Keep the response concise and focused on the most important findings."
         insights = query_gemini(insights_prompt)
 
