@@ -17,12 +17,12 @@ app2_path = r"C:\Users\Pranav\Desktop\WP\templates\app.py"
 process1 = run_flask_app(app1_path, 5000) 
 process2 = run_flask_app(app2_path, 5001)
 
-print("Both Flask apps are running on ports 5000 and 5001")
+print("Flask App is running")
 
 try:
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
-    print("Terminating both Flask apps...")
+    print("Terminating Flask app...")
     process1.terminate()
     process2.terminate()
