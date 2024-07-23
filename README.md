@@ -7,3 +7,6 @@ Steps to run the repo:
 6. Execute run.py
 7. Select your database
 8. Query your database in plain English
+
+Prerequisites:
+The user must know the schema of the database they are querying.
