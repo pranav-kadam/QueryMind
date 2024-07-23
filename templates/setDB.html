@@ -36,7 +36,7 @@
             <span class="text-xl font-bold gradient-text">QueryMind</span>
         </div>
         <div class="space-x-4">
-            <a href="#" class="hover:text-gray-300">Home</a>
+            <a href="#" class="hover:text-gray-300 redirect-btn" data-redirect="./Home.html">Home</a>
             <a href="#" class="hover:text-gray-300">Connect Your DB</a>
         </div>
         <div class="flex items-center">
@@ -83,6 +83,17 @@
                     redirectUrl = "http://localhost:5001";
                 }
                 window.location.href = redirectUrl;
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const redirectButtons = document.querySelectorAll('.redirect-btn');
+            redirectButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const redirectUrl = "http://localhost:5000";
+                    window.location.href = redirectUrl;
+                });
             });
         });
     </script>
