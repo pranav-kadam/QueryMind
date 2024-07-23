@@ -21,7 +21,7 @@ QueryMind is a chat-based text-to-SQL database assistant designed to interact wi
 ## Installation
 1. Clone the repository
   ```bash
-   git clone https://github.com/pranav-kadam/QueryMind.git
+   git clone https://github.com/username/QueryMind.git
    cd Querymind
    ```
 3. Navigate to the repository's directory and install the dependencies from `requirements.txt`.
