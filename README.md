@@ -41,3 +41,8 @@ QueryMind is a chat-based text-to-SQL database assistant designed to interact wi
 ## Prerequisites
 - Users must know the schema of the database they are querying.
 
+
+https://github.com/user-attachments/assets/f3dcd6f4-8016-4386-a730-e8aa70305960
+
+
+
