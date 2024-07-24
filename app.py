@@ -20,6 +20,34 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+# Define the schema
+schema_info = """
+Tables:
+1. dept (Department):
+   - DEPTNO (integer, primary key)
+   - DNAME (string)
+   - LOC (string)
+
+2. emp (Employee):
+   - EMPNO (integer, primary key)
+   - MGR (integer, foreign key)
+   - DEPTNO (integer, foreign key referencing dept table)
+   - ENAME (string)
+   - JOB (string)
+   - HIREDATE (datetime)
+   - SAL (integer)
+   - COMM (integer)
+
+3. proj (Project):
+   - PROJID (integer, primary key)
+   - EMPNO (integer, foreign key referencing emp table)
+   - STARTDATE (datetime)
+   - ENDDATE (datetime)
+
+4. Managers (view or derived table):
+   - Manager (string)
+   - Employee (string)
+"""
 
 api_responses = []
 
@@ -86,7 +114,11 @@ def execute_query():
     logging.info(f"Received query: {natural_language_query}")
 
     try:
-        prompt = f"Convert the following natural language query to SQL. Also the sql code should not have ``` in beginning or end and sql word or SQL word in output. Respond only with the SQL query and no other text: '{natural_language_query}'."
+        prompt = f"""Given the following database schema:
+                  {schema_info}
+                    Convert the following natural language query to SQL. The SQL code should not have ``` in the beginning or end and should not include the word 'sql' or 'SQL' in the output. Respond only with the SQL query and no other text:
+                 '{natural_language_query}'"""  
+        
         sql_query = query_gemini(prompt)
         sql_query = clean_sql_query(sql_query)
         logging.info(f"Generated SQL query: {sql_query}")
