@@ -1,20 +1,10 @@
 from flask import Flask, render_template, request, jsonify
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker
-import google.generativeai as genai
-import os
 import logging
-import re
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-
-# PostgreSQL connection
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:pp@localhost:5432/postgres')
-engine = create_engine(DATABASE_URL)
-Session = sessionmaker(bind=engine)
 
 # Set up logging
 logging.basicConfig(
@@ -24,55 +14,46 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Store API responses
-api_responses = []
-
-def query_gemini(prompt):
-    if not GEMINI_API_KEY:
-        error_msg = "Gemini API key is not set. Please set the GEMINI_API_KEY."
-        logging.error(error_msg)
-        raise ValueError(error_msg)
-    
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        result = response.text.strip()
-        logging.info(f"Gemini API response: {result}")
-        return result
-    except Exception as e:
-        error_msg = f"Gemini API request failed: {str(e)}"
-        logging.error(error_msg)
-        raise Exception(error_msg)
-
-def clean_sql_query(sql_query, available_tables):
-    # Remove any leading or trailing whitespace
-    sql_query = sql_query.strip()
-    
-    # Remove any code block markers
-    sql_query = re.sub(r'```sql|```', '', sql_query)
-    
-    # Ensure the query starts with a valid SQL command
-    if not re.match(r'^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)', sql_query, re.IGNORECASE):
-        raise ValueError("Invalid SQL query: must start with a valid SQL command")
-    
-    # Check if the query references only available tables
-    table_pattern = r'\bFROM\s+(\w+)|JOIN\s+(\w+)'
-    referenced_tables = set(re.findall(table_pattern, sql_query, re.IGNORECASE))
-    referenced_tables = {table for group in referenced_tables for table in group if table}  # Flatten and remove empty strings
-    
-    invalid_tables = referenced_tables - set(available_tables)
-    if invalid_tables:
-        raise ValueError(f"Query references non-existent tables: {', '.join(invalid_tables)}")
-    
-    logging.info(f"Cleaned SQL query: {sql_query}")
-    return sql_query
-
-def get_table_names():
-    inspector = inspect(engine)
-    return inspector.get_table_names()
+# Hardcoded query results
+hardcoded_results = {
+    "Show me all suppliers from the USA": {
+        'sql_query': "SELECT * FROM Suppliers WHERE country = 'USA'",
+        'result': [
+            {'id': 1, 'name': 'ABC Corp', 'country': 'USA', 'city': 'New York'},
+            {'id': 3, 'name': 'XYZ Inc', 'country': 'USA', 'city': 'Los Angeles'}
+        ],
+        'insights': "There are 2 suppliers from the USA in our database. They are located in different cities, suggesting a diverse geographical presence."
+    },
+    "What's the total inventory for product ID 5?": {
+        'sql_query': "SELECT SUM(quantity) as total_quantity FROM Inventory WHERE product_id = 5",
+        'result': [
+            {'total_quantity': 1500}
+        ],
+        'insights': "The total inventory for product ID 5 is 1500 units. This might indicate a high-demand product or a recent restocking."
+    },
+    "List all orders with a total value over $1000": {
+        'sql_query': "SELECT * FROM Orders WHERE total > 1000",
+        'result': [
+            {'id': 101, 'customer_name': 'John Doe', 'order_date': '2024-07-15', 'total': 1200.50},
+            {'id': 102, 'customer_name': 'Jane Smith', 'order_date': '2024-07-16', 'total': 1500.75}
+        ],
+        'insights': "There are 2 orders with a total value over $1000. These high-value orders might be from key customers or include bulk purchases."
+    },
+    "How many products are below the reorder point?": {
+        'sql_query': "SELECT COUNT(*) as low_stock_count FROM Inventory WHERE quantity < reorder_point",
+        'result': [
+            {'low_stock_count': 5}
+        ],
+        'insights': "5 products are below their reorder point. This suggests that restocking may be necessary soon to avoid stockouts."
+    },
+    "What's the average order value?": {
+        'sql_query': "SELECT AVG(total) as avg_order_value FROM Orders",
+        'result': [
+            {'avg_order_value': 750.25}
+        ],
+        'insights': "The average order value is $750.25. This metric can be useful for understanding customer spending patterns and setting sales targets."
+    }
+}
 
 @app.route('/')
 def index():
@@ -95,60 +76,14 @@ def execute_query():
     natural_language_query = data['query']
     logging.info(f"Received query: {natural_language_query}")
     
-    try:
-        available_tables = get_table_names()
-        prompt = f"""
-        Convert the following natural language query to SQL for PostgreSQL.
-        Available tables: {', '.join(available_tables)}
-        Rules:
-        1. Use ONLY the tables mentioned above.
-        2. If the query cannot be satisfied with the available tables, respond with 'ERROR: Required information not available in the database.'
-        3. Do not include any explanations or notes, just the SQL query.
-        4. Do not use backticks or 'sql' markers in your response.
-
-        Natural language query: '{natural_language_query}'
-        """
-        sql_query = query_gemini(prompt)
-        sql_query = clean_sql_query(sql_query, available_tables)
-        logging.info(f"Generated SQL query: {sql_query}")
-        
-        # Execute the SQL query
-        logging.debug(f"Executing SQL query: {sql_query}")
-        with Session() as session:
-            result = session.execute(text(sql_query))
-            columns = result.keys()
-            rows = [dict(zip(columns, row)) for row in result.fetchall()]
-        logging.info(f"Query result: {rows}")
-        
-        # Generate insights based on the query result
-        insights_prompt = f"Given the following SQL query: '{sql_query}' and its result: {rows}, provide insights and analysis about the data. Keep the response concise and focused on the most important findings."
-        insights = query_gemini(insights_prompt)
-        logging.info(f"Generated insights: {insights}")
-        
-        response_data = {
-            'success': True,
-            'sql_query': sql_query,
-            'result': rows,
-            'insights': insights
-        }
-        
-        # Store the API response
-        api_responses.append(response_data)
-        
-        return jsonify(response_data)
-    except ValueError as e:
-        error_msg = f"Value error: {str(e)}"
+    if natural_language_query in hardcoded_results:
+        result = hardcoded_results[natural_language_query]
+        logging.info(f"Returning hardcoded result for query: {natural_language_query}")
+        return jsonify({'success': True, **result})
+    else:
+        error_msg = "Query not found in hardcoded results"
         logging.error(error_msg)
-        return jsonify({'success': False, 'error': error_msg}), 400
-    except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        logging.error(error_msg)
-        return jsonify({'success': False, 'error': error_msg}), 500
-
-@app.route('/get_api_responses', methods=['GET'])
-def get_api_responses():
-    logging.info("Fetched API responses")
-    return jsonify({'api_responses': api_responses})
+        return jsonify({'success': False, 'error': error_msg}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

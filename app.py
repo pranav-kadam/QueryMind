@@ -72,13 +72,11 @@ def query_gemini(prompt):
         raise Exception(error_msg)
 
 def clean_sql_query(sql_query):
-    sql_query = re.sub(r'^[^a-zA-Z]*(select|insert|update|delete)', r'\1', sql_query, flags=re.IGNORECASE)
-    
-    sql_query_lines = sql_query.split('\n')
-    sql_query_lines = [line.strip() for line in sql_query_lines if line.strip()]
+    sql_query = re.sub(r'^[^a-zA-Z]*(?:sql\s*)?', '', sql_query, flags=re.IGNORECASE)
+    sql_query = sql_query.replace('```', '')
+    sql_query_lines = [line.strip() for line in sql_query.split('\n') if line.strip()]
     cleaned_sql_query = ' '.join(sql_query_lines)
-    
-    logging.info(f"Cleaned SQL query: {cleaned_sql_query}")
+    app.logger.info(f"Cleaned SQL query: {cleaned_sql_query}")
     return cleaned_sql_query
 
 @app.route('/')
@@ -114,10 +112,28 @@ def execute_query():
     logging.info(f"Received query: {natural_language_query}")
 
     try:
-        prompt = f"""Given the following database schema:
-                  {schema_info}
-                    Convert the following natural language query to SQL. The SQL code should not have ``` in the beginning or end and should not include the word 'sql' or 'SQL' in the output. Respond only with the SQL query and no other text:
-                 '{natural_language_query}'"""  
+        prompt = f"""
+            Database Schema:
+            {schema_info}
+            Task: Convert the following natural language query to SQL:
+            "{natural_language_query}"
+            Instructions:
+            Analyze the given schema and natural language query carefully.
+            Write a precise and efficient SQL query that accurately represents the natural language query.
+            Ensure the SQL query is compatible with the provided schema.
+            Use appropriate JOIN operations, WHERE clauses, and aggregate functions as needed.
+            Include any necessary subqueries or Common Table Expressions (CTEs) if required.
+            Optimize the query for performance where possible.
+            Use consistent and clear formatting for readability.
+            Double-check that all referenced tables and columns exist in the schema.
+
+            Output Requirements:
+
+            Provide ONLY the SQL query without any additional text or explanations.
+            Do not include any markdown formatting, such as backticks or SQL language specifiers.
+            The response should begin and end with the SQL query itself.
+
+            SQL Query: """
         
         sql_query = query_gemini(prompt)
         sql_query = clean_sql_query(sql_query)

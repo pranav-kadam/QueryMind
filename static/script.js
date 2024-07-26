@@ -3,7 +3,7 @@ function downloadChat() {
     let chatContent = {
         success: true,
         chat: [],
-        apiResponses: [] // New array to store API responses
+        apiResponses: [] 
     };
 
     chatContainer.querySelectorAll('.message').forEach((messageElement) => {
@@ -16,7 +16,6 @@ function downloadChat() {
             message: messageText
         });
 
-        // If it's a Claude message, check for associated API response
         if (!isUserMessage) {
             const apiResponseElement = messageElement.querySelector('.api-response');
             if (apiResponseElement) {
@@ -26,14 +25,11 @@ function downloadChat() {
         }
     });
 
-    // Fetch any stored API responses from the server
     fetch('/get_api_responses')
         .then(response => response.json())
         .then(data => {
-            // Merge the fetched API responses with the existing ones
             chatContent.apiResponses = chatContent.apiResponses.concat(data.api_responses);
 
-            // Create and download the file
             const blob = new Blob([JSON.stringify(chatContent, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
