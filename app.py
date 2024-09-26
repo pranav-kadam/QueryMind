@@ -10,17 +10,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:\\Users\\Pranav\\Desktop\\WP\\Employees.db'  # Ensure this path is correct
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:\\Users\\Pranav\\Desktop\\QueryMind\\Employees.db'  
 db = SQLAlchemy(app)
 
-# Set up logging
 logging.basicConfig(
     filename='app.log',
     level=logging.DEBUG,
     format='%(asctime)s [%(levelname)s] - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-# Define the schema
+
 schema_info = """
 Tables:
 1. dept (Department):
@@ -61,7 +60,7 @@ def query_gemini(prompt):
         raise ValueError(error_msg)
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-pro')
         response = model.generate_content(prompt)
         result = response.text.strip()
         logging.info(f"Gemini API response: {result}")
@@ -156,7 +155,6 @@ def execute_query():
             'insights': insights
         }
 
-        # Store the API response
         api_responses.append(response_data)
 
         return jsonify(response_data)
